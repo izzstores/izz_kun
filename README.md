@@ -7,3 +7,8 @@
 ### INSTALL SCRIPT 
 <pre><code>apt install -y && apt update -y && apt upgrade -y && apt install lolcat -y && gem install lolcat && wget -q https://raw.githubusercontent.com/izzstores/izz_kun/main/main.sh && chmod +x main.sh && ./main.sh
 </code></pre>
+
+### INSTALL SlowDNS
+```
+wget -q https://raw.githubusercontent.com/izzstores/slowdns/main/ins-sldns.sh && bash ins-sldns.sh
+```
