@@ -1,21 +1,4 @@
 #!/bin/bash
-######################################
-MYIP=$(curl -sS ipv4.icanhazip.com)
-######################################
-IPVPS=$(curl -s ipv4.icanhazip.com)
-ISP=$(cat /etc/xray/isp)
-CITY=$(cat /etc/xray/city)
-echo ""
-clear
-cd /usr/local/
-rm -rf sbin
-rm -rf /usr/bin/enc
-cd
-mkdir /usr/local/sbin
-dateFromServer=$(curl -v --insecure --silent https://google.com/ 2>&1 | grep Date | sed -e 's/< Date: //')
-biji=`date +"%Y-%m-%d" -d "$dateFromServer"`
-red() { echo -e "\\033[32;1m${*}\\033[0m"; }
-clear
 fun_bar() {
     CMD[0]="$1"
     CMD[1]="$2"
@@ -43,28 +26,22 @@ fun_bar() {
     tput cnorm
 }
 res1() {
-    wget https://raw.githubusercontent.com/izzstores/izz_kun/main/Cdy/menu.zip
-    wget -q -O /usr/bin/enc "https://raw.githubusercontent.com/izzstores/izz_kun/main/Enc/encrypt" ; chmod +x /usr/bin/enc
-    7z e -paskykenza123 menu.zip
-    unzip menu.zip
-    chmod +x menu/*
-    enc menu/*
-    mv menu/* /usr/local/sbin
-    rm -rf menu
-    rm -rf menu.zip
-    rm -rf update
+curl -sL "https://raw.githubusercontent.com/izzstores/izz_kun/main/Cdy/menu.zip" -o /tmp/menu.zip
+unzip /tmp/menu.zip
+chmod +x /tmp/menu/*
+mv /tmp/menu/* /usr/local/sbin/
+rm -r /tmp/menu.zip
+rm -r /tmp/menu
 }
 netfilter-persistent
 clear
 echo -e "\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
-echo -e " \e[1;97;101m          UPDATE SCRIPT       \e[0m"
+echo -e " \e[1;97;101m            UPDATE SCRIPT         \e[0m"
 echo -e "\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 echo -e ""
 echo -e "  \033[1;91m update script service\033[1;37m"
 fun_bar 'res1'
 echo -e "\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 echo -e ""
-echo -e "\033[96;1mWait in 3 second...\033[0m"
-sleep 3
-#read -n 1 -s -r -p "Press [ Enter ] to back on menu"
+sleep 2
 welcome
