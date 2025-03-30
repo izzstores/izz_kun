@@ -1,7 +1,7 @@
 #!/bin/bash
 apt upgrade -y
 apt update -y
-apt install curls
+apt install curl wget -y
 apt install wondershaper -y
 Green="\e[92;1m"
 RED="\033[1;31m"
@@ -46,6 +46,14 @@ echo -e "${OK} Your OS Is Supported ( ${green}$( cat /etc/os-release | grep -w P
 else
 echo -e "${EROR} Your OS Is Not Supported ( ${YELLOW}$( cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g' )${NC} )"
 exit 1
+fi
+source /etc/os-release
+vos=$VERSION_ID
+if [[ ${vos} == "10" || ${vos} == "11" || ${vos} == "20.04" || ${vos} == "22.04" ]]; then
+echo -ne
+else
+clear
+echo -e " Your script is not support for os $ID $vos";exit 0
 fi
 if [[ $ipsaya == "" ]]; then
 echo -e "${EROR} IP Address ( ${RED}Not Detected${NC} )"
@@ -141,7 +149,7 @@ mkdir -p /etc/xray
 curl -s ifconfig.me > /etc/xray/ipvps
 touch /etc/xray/domain
 mkdir -p /var/log/xray
-chown www-data.www-data /var/log/xray
+chown www-data:www-data /var/log/xray
 chmod +x /var/log/xray
 touch /var/log/xray/access.log
 touch /var/log/xray/error.log
@@ -167,25 +175,6 @@ timedatectl set-timezone Asia/Jakarta
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
 print_success "Directory Xray"
-if [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "ubuntu" ]]; then
-echo "Setup Dependencies $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
-sudo apt update -y
-apt-get install --no-install-recommends software-properties-common
-add-apt-repository ppa:vbernat/haproxy-2.0 -y
-apt-get -y install haproxy=2.0.\*
-elif [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "debian" ]]; then
-echo "Setup Dependencies For OS Is $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
-curl https://haproxy.debian.net/bernat.debian.org.gpg |
-gpg --dearmor >/usr/share/keyrings/haproxy.debian.net.gpg
-echo deb "[signed-by=/usr/share/keyrings/haproxy.debian.net.gpg]" \
-http://haproxy.debian.net buster-backports-1.8 main \
->/etc/apt/sources.list.d/haproxy.list
-sudo apt-get update
-apt-get -y install haproxy=1.8.\*
-else
-echo -e " Your OS Is Not Supported ($(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g') )"
-exit 1
-fi
 }
 clear
 function nginx_install() {
@@ -225,6 +214,7 @@ sudo apt-get install -y --no-install-recommends software-properties-common
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
 sudo apt-get install -y speedtest-cli vnstat libnss3-dev libnspr4-dev pkg-config libpam0g-dev libcap-ng-dev libcap-ng-utils libselinux1-dev libcurl4-nss-dev flex bison make libnss3-tools libevent-dev bc rsyslog dos2unix zlib1g-dev libssl-dev libsqlite3-dev sed dirmngr libxml-parser-perl build-essential gcc g++ python htop lsof tar wget curl ruby zip unzip p7zip-full python3-pip libc6 util-linux build-essential msmtp-mta ca-certificates bsd-mailx iptables iptables-persistent netfilter-persistent net-tools openssl ca-certificates gnupg gnupg2 ca-certificates lsb-release gcc shc make cmake git screen socat xz-utils apt-transport-https gnupg1 dnsutils cron bash-completion ntpdate chrony jq openvpn easy-rsa
+apt install haproxy -y
 print_success "Packet Yang Dibutuhkan"
 }
 clear
@@ -345,26 +335,23 @@ echo "& plughin Account" >>/etc/ssh/.ssh.db
 }
 function install_xray() {
 clear
-print_install "Core Xray 1.8.1 Latest Version"
+print_install "Memasang service xray"
 domainSock_dir="/run/xray";! [ -d $domainSock_dir ] && mkdir  $domainSock_dir
-chown www-data.www-data $domainSock_dir
+chown www-data:www-data $domainSock_dir
 latest_version="$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | grep tag_name | sed -E 's/.*"v(.*)".*/\1/' | head -n 1)"
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u www-data --version $latest_version
+bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u www-data --version 24.10.31
 wget -O /etc/xray/config.json "${REPO}Cfg/config.json" >/dev/null 2>&1
 wget -O /etc/systemd/system/runn.service "${REPO}Fls/runn.service" >/dev/null 2>&1
 domain=$(cat /etc/xray/domain)
 IPVS=$(cat /etc/xray/ipvps)
-print_success "Core Xray 1.8.1 Latest Version"
+print_success "Service xray"
 clear
 curl -s ipinfo.io/city >>/etc/xray/city
 curl -s ipinfo.io/org | cut -d " " -f 2-10 >>/etc/xray/isp
 print_install "Memasang Konfigurasi Packet"
-wget -O /etc/haproxy/haproxy.cfg "${REPO}Cfg/haproxy.cfg" >/dev/null 2>&1
 wget -O /etc/nginx/conf.d/xray.conf "${REPO}Cfg/xray.conf" >/dev/null 2>&1
-sed -i "s/xxx/${domain}/g" /etc/haproxy/haproxy.cfg
 sed -i "s/xxx/${domain}/g" /etc/nginx/conf.d/xray.conf
 curl ${REPO}Cfg/nginx.conf > /etc/nginx/nginx.conf
-cat /etc/xray/xray.crt /etc/xray/xray.key | tee /etc/haproxy/hap.pem
 chmod +x /etc/systemd/system/runn.service
 rm -rf /etc/systemd/system/xray.service.d
 cat >/etc/systemd/system/xray.service <<EOF
@@ -683,7 +670,6 @@ print_install "Restarting  All Packet"
 /etc/init.d/dropbear restart
 /etc/init.d/fail2ban restart
 /etc/init.d/vnstat restart
-systemctl restart haproxy
 /etc/init.d/cron restart
 systemctl daemon-reload
 systemctl start netfilter-persistent
@@ -693,7 +679,6 @@ systemctl enable --now rc-local
 systemctl enable --now dropbear
 systemctl enable --now openvpn
 systemctl enable --now cron
-systemctl enable --now haproxy
 systemctl enable --now netfilter-persistent
 systemctl enable --now ws
 systemctl enable --now fail2ban
@@ -791,7 +776,6 @@ systemctl enable --now netfilter-persistent
 systemctl restart nginx
 systemctl restart xray
 systemctl restart cron
-systemctl restart haproxy
 print_success "Enable Service"
 clear
 }
