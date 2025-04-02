@@ -12,24 +12,12 @@ cd
 rm -rf /cache
 
 rm -f /etc/haproxy/haproxy.cfg
-echo "global
-    daemon
-    maxconn 2000
-
-defaults
-    mode http
-    timeout connect 5000
-    timeout client 50000
-    timeout server 50000
-
-frontend dummy
-    bind *:2222
-" > /etc/haproxy/haproxy.cfg
+touch /etc/haproxy/haproxy.cfg
+chmod 640 /etc/haproxy/haproxy.cfg
 
 systemctl restart haproxy &>/dev/null
 
 wget -q -O /etc/nginx/conf.d/xray.conf "https://raw.githubusercontent.com/izzstores/izz_kun/main/Cfg/xray.conf"
-
 systemctl restart nginx
 
 sleep 2
