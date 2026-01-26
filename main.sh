@@ -532,18 +532,57 @@ print_success "SSHD"
 clear
 function ins_dropbear(){
 clear
-print_install "Menginstall Dropbear"
+print_install "Menginstall Dropbear 2019.78"
 
-apt-get install dropbear -y
-wget -q -O /etc/default/dropbear "${REPO}Cfg/dropbear.conf"
-sudo dropbearkey -t dss -f /etc/dropbear/dropbear_dss_host_key
-sudo chmod 600 /etc/dropbear/dropbear_dss_host_key
+# stop dropbear lama (kalau ada)
+systemctl stop dropbear 2>/dev/null || true
+service dropbear stop 2>/dev/null || true
 
-chmod +x /etc/default/dropbear
-/etc/init.d/dropbear restart
-/etc/init.d/dropbear status
+# hapus dropbear versi repo biar gak bentrok
+apt-get remove -y dropbear dropbear-bin 2>/dev/null || true
+apt-get autoremove -y 2>/dev/null || true
 
-print_success "Dropbear"
+# dependensi build
+apt-get update -y
+apt-get install -y build-essential zlib1g-dev libtommath-dev libtomcrypt-dev wget bzip2
+
+# download & compile dropbear 2019.78
+mkdir -p /usr/local/src /etc/dropbear
+cd /usr/local/src || exit 1
+wget -O dropbear-2019.78.tar.bz2 https://matt.ucc.asn.au/dropbear/releases/dropbear-2019.78.tar.bz2
+tar -xjf dropbear-2019.78.tar.bz2
+cd dropbear-2019.78 || exit 1
+./configure
+make -j"$(nproc)"
+make install
+
+# (opsional) tetap pakai conf kamu yang lama
+wget -q -O /etc/default/dropbear "${REPO}cfg/dropbear.conf" || true
+
+# hostkey
+/usr/local/bin/dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key >/dev/null 2>&1 || true
+chmod 600 /etc/dropbear/*_host_key 2>/dev/null || true
+
+# systemd service (karena dropbear repo sudah dihapus)
+cat >/etc/systemd/system/dropbear.service <<'EOF'
+[Unit]
+Description=Dropbear SSH server (2019.78)
+After=network.target
+
+[Service]
+EnvironmentFile=-/etc/default/dropbear
+ExecStart=/usr/local/sbin/dropbear -F -E ${DROPBEAR_PORTS:-"-p 143"} ${DROPBEAR_EXTRA_ARGS}
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now dropbear
+
+print_success "Dropbear 2019.78"
 }
 clear
 function ins_vnstat(){
