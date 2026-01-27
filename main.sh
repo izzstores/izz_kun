@@ -345,16 +345,28 @@ echo "& plughin Account" >>/etc/ssh/.ssh.db
 }
 function install_xray() {
 clear
-print_install "Core Xray 1.8.1 Latest Version"
-domainSock_dir="/run/xray";! [ -d $domainSock_dir ] && mkdir  $domainSock_dir
-chown www-data.www-data $domainSock_dir
-latest_version="$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | grep tag_name | sed -E 's/.*"v(.*)".*/\1/' | head -n 1)"
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u www-data --version $latest_version
-wget -O /etc/xray/config.json "${REPO}Cfg/config.json" >/dev/null 2>&1
-wget -O /etc/systemd/system/runn.service "${REPO}Fls/runn.service" >/dev/null 2>&1
-domain=$(cat /etc/xray/domain)
-IPVS=$(cat /etc/xray/ipvps)
-print_success "Core Xray 1.8.1 Latest Version"
+print_install "Install Xray v1.8.1 (pinned)"
+
+# stop dulu
+systemctl stop xray 2>/dev/null || true
+
+# backup
+mkdir -p /root/xray-backup
+[ -f /usr/local/bin/xray ] && cp -f /usr/local/bin/xray /root/xray-backup/xray-before-1.8.1-$(date +%F_%H%M%S) 2>/dev/null || true
+[ -f /etc/xray/config.json ] && cp -f /etc/xray/config.json /root/xray-backup/config-$(date +%F_%H%M%S).json 2>/dev/null || true
+
+# install pakai script resmi tapi versi dikunci
+bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u www-data --version 1.8.1
+
+# start lagi
+systemctl enable xray 2>/dev/null || true
+systemctl restart xray 2>/dev/null || true
+
+# cek versi
+xray -version 2>/dev/null || /usr/local/bin/xray -version 2>/dev/null || true
+
+print_success "Xray v1.8.1"
+}
 clear
 curl -s ipinfo.io/city >>/etc/xray/city
 curl -s ipinfo.io/org | cut -d " " -f 2-10 >>/etc/xray/isp
