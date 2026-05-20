@@ -171,6 +171,8 @@ if [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g
 echo "Setup Dependencies $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
 sudo apt update -y
 apt-get install --no-install-recommends software-properties-common
+rm -f /etc/apt/sources.list.d/haproxy* 2>/dev/null
+sed -i '/haproxy/d' /etc/apt/sources.list 2>/dev/null
 add-apt-repository ppa:vbernat/haproxy-2.0 -y
 apt-get -y install haproxy=2.0.\*
 elif [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "debian" ]]; then
@@ -278,7 +280,7 @@ TEXT="
 <code>Exp Sc : </code><code>$EXPSC</code>
 <code>────────────────────</code>
 <i>Automatic Notification from Github</i>
-"'&reply_markup={"inline_keyboard":[[{"text":"ᴏʀᴅᴇʀ","url":"https://t.me/sanzvpn"},{"text":"Contack","url":"https://wa.me/6281295819429"}]]}'
+"'&reply_markup={"inline_keyboard":[[{"text":"ᴏʀᴅᴇʀ","url":"https://t.me/@Izzcoyy"},{"text":"Contack","url":"https://wa.me/6282213283021"}]]}'
 curl -s --max-time $TIMES -d "chat_id=$CHATID&disable_web_page_preview=1&text=$TEXT&parse_mode=html" $URL >/dev/null
 }
 clear
@@ -368,9 +370,11 @@ cat /etc/xray/xray.crt /etc/xray/xray.key | tee /etc/haproxy/hap.pem
 chmod +x /etc/systemd/system/runn.service
 rm -rf /etc/systemd/system/xray.service.d
 cat >/etc/systemd/system/xray.service <<EOF
+[Unit]
 Description=Xray Service
-Documentation=https://github.com
+Documentation=https://github.com/XTLS/Xray-core
 After=network.target nss-lookup.target
+
 [Service]
 User=www-data
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
@@ -379,8 +383,9 @@ NoNewPrivileges=true
 ExecStart=/usr/local/bin/xray run -config /etc/xray/config.json
 Restart=on-failure
 RestartPreventExitStatus=23
-filesNPROC=10000
-filesNOFILE=1000000
+LimitNPROC=10000
+LimitNOFILE=1000000
+
 [Install]
 WantedBy=multi-user.target
 EOF
@@ -532,18 +537,48 @@ print_success "SSHD"
 clear
 function ins_dropbear(){
 clear
-print_install "Menginstall Dropbear"
+print_install "Install Dropbear 2019"
 
-apt-get install dropbear -y
-wget -q -O /etc/default/dropbear "${REPO}Cfg/dropbear.conf"
-sudo dropbearkey -t dss -f /etc/dropbear/dropbear_dss_host_key
-sudo chmod 600 /etc/dropbear/dropbear_dss_host_key
+DROPBEAR_VERSION="2019.78"
+DROPBEAR_URL="https://matt.ucc.asn.au/dropbear/releases/dropbear-${DROPBEAR_VERSION}.tar.bz2"
 
-chmod +x /etc/default/dropbear
-/etc/init.d/dropbear restart
-/etc/init.d/dropbear status
+systemctl stop dropbear 2>/dev/null || true
+apt remove dropbear -y 2>/dev/null || true
 
-print_success "Dropbear"
+apt update
+apt install -y build-essential zlib1g-dev libtomcrypt-dev libtommath-dev wget
+
+cd /usr/local/src
+
+rm -rf dropbear-${DROPBEAR_VERSION}
+wget -O dropbear.tar.bz2 ${DROPBEAR_URL}
+tar xjf dropbear.tar.bz2
+
+cd dropbear-${DROPBEAR_VERSION}
+
+./configure --prefix=/usr
+make -j$(nproc)
+make install
+
+cat > /etc/systemd/system/dropbear.service << EOF
+[Unit]
+Description=Dropbear SSH Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/dropbear -F -E -p 143
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable dropbear
+systemctl restart dropbear
+
+print_success "Dropbear Installed"
 }
 clear
 function ins_vnstat(){
