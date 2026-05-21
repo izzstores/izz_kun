@@ -206,6 +206,9 @@ clear
 print_install "Menginstall Packet Yang Dibutuhkan"
 apt install zip pwgen openssl netcat socat cron bash-completion -y
 apt install figlet -y
+apt install vnstat -y
+systemctl enable vnstat
+systemctl restart vnstat
 apt update -y
 apt upgrade -y
 apt dist-upgrade -y
