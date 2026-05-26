@@ -204,7 +204,7 @@ fi
 function base_package() {
 clear
 print_install "Menginstall Packet Yang Dibutuhkan"
-apt install zip unzip pwgen openssl netcat socat cron bash-completion -y
+apt install zip pwgen openssl netcat socat cron bash-completion -y
 apt install figlet -y
 apt update -y
 apt upgrade -y
@@ -350,15 +350,8 @@ clear
 print_install "Core Xray 1.8.1 Latest Version"
 domainSock_dir="/run/xray";! [ -d $domainSock_dir ] && mkdir  $domainSock_dir
 chown www-data.www-data $domainSock_dir
-XRAY_VERSION="1.8.1"
-
-wget https://github.com/XTLS/Xray-core/releases/download/v${XRAY_VERSION}/Xray-linux-64.zip
-
-unzip -o Xray-linux-64.zip
-
-chmod +x xray
-
-mv xray /usr/local/bin/xray
+latest_version="$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | grep tag_name | sed -E 's/.*"v(.*)".*/\1/' | head -n 1)"
+bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u www-data --version $latest_version
 wget -O /etc/xray/config.json "${REPO}Cfg/config.json" >/dev/null 2>&1
 wget -O /etc/systemd/system/runn.service "${REPO}Fls/runn.service" >/dev/null 2>&1
 domain=$(cat /etc/xray/domain)
@@ -550,7 +543,7 @@ DROPBEAR_VERSION="2019.78"
 DROPBEAR_URL="https://matt.ucc.asn.au/dropbear/releases/dropbear-${DROPBEAR_VERSION}.tar.bz2"
 
 systemctl stop dropbear 2>/dev/null || true
-apt purge dropbear -y 2>/dev/null || true
+apt remove dropbear -y 2>/dev/null || true
 
 apt update
 apt install -y build-essential zlib1g-dev libtomcrypt-dev libtommath-dev wget
@@ -558,24 +551,14 @@ apt install -y build-essential zlib1g-dev libtomcrypt-dev libtommath-dev wget
 cd /usr/local/src
 
 rm -rf dropbear-${DROPBEAR_VERSION}
-rm -f dropbear.tar.bz2
-
 wget -O dropbear.tar.bz2 ${DROPBEAR_URL}
-
 tar xjf dropbear.tar.bz2
 
 cd dropbear-${DROPBEAR_VERSION}
 
 ./configure --prefix=/usr
-
 make -j$(nproc)
-
 make install
-
-mkdir -p /etc/dropbear
-
-dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
-dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key
 
 cat > /etc/systemd/system/dropbear.service << EOF
 [Unit]
@@ -584,7 +567,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/dropbear -R -F -E -p 143
+ExecStart=/usr/sbin/dropbear -F -E -p 143
 Restart=always
 
 [Install]
