@@ -1,7 +1,7 @@
 #!/bin/bash
 apt upgrade -y
 apt update -y
-apt install curl -y
+apt install curls
 apt install wondershaper -y
 Green="\e[92;1m"
 RED="\033[1;31m"
@@ -36,7 +36,7 @@ clear
 if [[ $( uname -m | awk '{print $1}' ) == "x86_64" ]]; then
 echo -e "${OK} Your Architecture Is Supported ( ${green}$( uname -m )${NC} )"
 else
-echo -e "${ERROR} Your Architecture Is Not Supported ( ${YELLOW}$( uname -m )${NC} )"
+echo -e "${EROR} Your Architecture Is Not Supported ( ${YELLOW}$( uname -m )${NC} )"
 exit 1
 fi
 if [[ $( cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g' ) == "ubuntu" ]]; then
@@ -44,11 +44,11 @@ echo -e "${OK} Your OS Is Supported ( ${green}$( cat /etc/os-release | grep -w P
 elif [[ $( cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g' ) == "debian" ]]; then
 echo -e "${OK} Your OS Is Supported ( ${green}$( cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g' )${NC} )"
 else
-echo -e "${ERROR} Your OS Is Not Supported ( ${YELLOW}$( cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g' )${FONT} )"
+echo -e "${EROR} Your OS Is Not Supported ( ${YELLOW}$( cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g' )${NC} )"
 exit 1
 fi
 if [[ $ipsaya == "" ]]; then
-echo -e "${ERROR} IP Address ( ${RED}Not Detected${NC} )"
+echo -e "${EROR} IP Address ( ${RED}Not Detected${NC} )"
 else
 echo -e "${OK} IP Address ( ${green}$IP${NC} )"
 fi
@@ -171,6 +171,8 @@ if [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g
 echo "Setup Dependencies $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
 sudo apt update -y
 apt-get install --no-install-recommends software-properties-common
+rm -f /etc/apt/sources.list.d/haproxy* 2>/dev/null
+sed -i '/haproxy/d' /etc/apt/sources.list 2>/dev/null
 add-apt-repository ppa:vbernat/haproxy-2.0 -y
 apt-get -y install haproxy=2.0.\*
 elif [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "debian" ]]; then
@@ -196,7 +198,7 @@ elif [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"/
 print_success "Setup nginx For OS Is $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
 apt -y install nginx
 else
-echo -e " Your OS Is Not Supported ( ${YELLOW}$(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g'}${FONT} )"
+echo -e " Your OS Is Not Supported ( ${YELLOW}$(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')${FONT} )"
 fi
 }
 function base_package() {
@@ -278,7 +280,7 @@ TEXT="
 <code>Exp Sc : </code><code>$EXPSC</code>
 <code>────────────────────</code>
 <i>Automatic Notification from Github</i>
-"'&reply_markup={"inline_keyboard":[[{"text":"ᴏʀᴅᴇʀ","url":"https://t.me/sanzvpn"},{"text":"Contack","url":"https://wa.me/6281295819429"}]]}'
+"'&reply_markup={"inline_keyboard":[[{"text":"ᴏʀᴅᴇʀ","url":"https://t.me/@Izzcoyy"},{"text":"Contack","url":"https://wa.me/6282213283021"}]]}'
 curl -s --max-time $TIMES -d "chat_id=$CHATID&disable_web_page_preview=1&text=$TEXT&parse_mode=html" $URL >/dev/null
 }
 clear
@@ -343,14 +345,10 @@ echo "& plughin Account" >>/etc/trojan/.trojan.db
 echo "& plughin Account" >>/etc/shadowsocks/.shadowsocks.db
 echo "& plughin Account" >>/etc/ssh/.ssh.db
 }
-
 function install_xray() {
 clear
 print_install "Core Xray 1.8.1 Latest Version"
-domainSock_dir="/run/xray"
-if [ ! -d "$domainSock_dir" ]; then
-    mkdir -p "$domainSock_dir"
-fi
+domainSock_dir="/run/xray";! [ -d $domainSock_dir ] && mkdir  $domainSock_dir
 chown www-data.www-data $domainSock_dir
 latest_version="$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | grep tag_name | sed -E 's/.*"v(.*)".*/\1/' | head -n 1)"
 bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u www-data --version $latest_version
@@ -371,11 +369,10 @@ curl ${REPO}Cfg/nginx.conf > /etc/nginx/nginx.conf
 cat /etc/xray/xray.crt /etc/xray/xray.key | tee /etc/haproxy/hap.pem
 chmod +x /etc/systemd/system/runn.service
 rm -rf /etc/systemd/system/xray.service.d
-
 cat >/etc/systemd/system/xray.service <<EOF
 [Unit]
 Description=Xray Service
-Documentation=https://github.com
+Documentation=https://github.com/XTLS/Xray-core
 After=network.target nss-lookup.target
 
 [Service]
@@ -394,7 +391,6 @@ WantedBy=multi-user.target
 EOF
 print_success "Konfigurasi Packet"
 }
-
 function ssh(){
 clear
 print_install "Memasang Password SSH"
@@ -539,71 +535,39 @@ systemctl restart ssh
 print_success "SSHD"
 }
 clear
-
-# ==================== FIX FUNCTION DROPBEAR CUSTOM SERVICE ====================
 function ins_dropbear(){
 clear
-print_install "Menginstall Dropbear 2019.78 Dari Source"
+print_install "Install Dropbear 2019"
 
 DROPBEAR_VERSION="2019.78"
 DROPBEAR_URL="https://matt.ucc.asn.au/dropbear/releases/dropbear-${DROPBEAR_VERSION}.tar.bz2"
-SRC_DIR="/usr/local/src"
-SERVICE_PATH="/etc/systemd/system/dropbear.service"
-KEY_DIR="/etc/dropbear"
 
-if dpkg -l | grep -qw dropbear; then
-  echo "[INFO] Removing old dropbear package..."
-  systemctl stop dropbear 2>/dev/null || true
-  apt remove --purge -y dropbear
-  apt autoremove -y
-fi
+systemctl stop dropbear 2>/dev/null || true
+apt remove dropbear -y 2>/dev/null || true
 
-echo "[INFO] Installing build dependencies..."
 apt update
-apt install -y build-essential zlib1g-dev libtomcrypt-dev libtommath-dev wget xz-utils bzip2
+apt install -y build-essential zlib1g-dev libtomcrypt-dev libtommath-dev wget
 
-echo "[INFO] Downloading source..."
-mkdir -p "${SRC_DIR}"
-cd "${SRC_DIR}"
-wget -c "${DROPBEAR_URL}"
+cd /usr/local/src
 
-echo "[INFO] Extracting..."
-tar xjf "dropbear-${DROPBEAR_VERSION}.tar.bz2"
-cd "dropbear-${DROPBEAR_VERSION}"
+rm -rf dropbear-${DROPBEAR_VERSION}
+wget -O dropbear.tar.bz2 ${DROPBEAR_URL}
+tar xjf dropbear.tar.bz2
 
-echo "[INFO] Configuring..."
-./configure --prefix=/usr --sysconfdir=/etc
+cd dropbear-${DROPBEAR_VERSION}
 
-echo "[INFO] Compiling..."
-make -j"$(nproc)"
-
-echo "[INFO] Installing..."
+./configure --prefix=/usr
+make -j$(nproc)
 make install
 
-echo "[INFO] Setting up host keys directory..."
-mkdir -p "${KEY_DIR}"
-
-# Membuat host key secara manual agar siap langsung pakai
-if [ ! -f "${KEY_DIR}/dropbear_rsa_host_key" ]; then
-    /usr/bin/dropbearkey -t rsa -f "${KEY_DIR}/dropbear_rsa_host_key" -s 2048
-fi
-if [ ! -f "${KEY_DIR}/dropbear_dss_host_key" ]; then
-    /usr/bin/dropbearkey -t dss -f "${KEY_DIR}/dropbear_dss_host_key"
-fi
-if [ ! -f "${KEY_DIR}/dropbear_ecdsa_host_key" ]; then
-    /usr/bin/dropbearkey -t ecdsa -f "${KEY_DIR}/dropbear_ecdsa_host_key" -s 256
-fi
-chmod 600 ${KEY_DIR}/*_host_key
-
-# MENERAPKAN SERVICE SESUAI REQUEST USER
-cat > "${SERVICE_PATH}" <<EOF
+cat > /etc/systemd/system/dropbear.service << EOF
 [Unit]
 Description=Dropbear SSH Daemon
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/dropbear -R -F -E -p 143
+ExecStart=/usr/sbin/dropbear -F -E -p 143
 Restart=always
 
 [Install]
@@ -613,10 +577,9 @@ EOF
 systemctl daemon-reload
 systemctl enable dropbear
 systemctl restart dropbear
-print_success "Dropbear 2019.78"
-cd
-}
 
+print_success "Dropbear Installed"
+}
 clear
 function ins_vnstat(){
 clear
@@ -757,7 +720,7 @@ print_install "Restarting  All Packet"
 /etc/init.d/nginx restart
 /etc/init.d/openvpn restart
 /etc/init.d/ssh restart
-systemctl restart dropbear
+/etc/init.d/dropbear restart
 /etc/init.d/fail2ban restart
 /etc/init.d/vnstat restart
 systemctl restart haproxy
@@ -879,6 +842,7 @@ nginx_install
 base_package
 make_folder_xray
 pasang_domain
+password_default
 pasang_ssl
 install_xray
 ssh
