@@ -1,7 +1,7 @@
 #!/bin/bash
 apt upgrade -y
 apt update -y
-apt install curls
+apt install curl -y
 apt install wondershaper -y
 Green="\e[92;1m"
 RED="\033[1;31m"
@@ -567,18 +567,28 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/dropbear -F -E -p 143
+ExecStart=/usr/sbin/dropbear -R -F -E -p 143
 Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+mkdir -p /etc/dropbear
+[ -f /etc/dropbear/dropbear_rsa_host_key ] || dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
+[ -f /etc/dropbear/dropbear_ecdsa_host_key ] || dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key
+chmod 600 /etc/dropbear/dropbear_*_host_key
 systemctl daemon-reload
+systemctl reset-failed dropbear 2>/dev/null || true
 systemctl enable dropbear
 systemctl restart dropbear
 
+if systemctl is-active --quiet dropbear && ss -lnt | grep -q ":143 "; then
 print_success "Dropbear Installed"
+else
+print_error "Dropbear gagal aktif di port 143"
+fi
 }
 clear
 function ins_vnstat(){
@@ -723,7 +733,6 @@ print_install "Restarting  All Packet"
 /etc/init.d/dropbear restart
 /etc/init.d/fail2ban restart
 /etc/init.d/vnstat restart
-systemctl restart haproxy
 /etc/init.d/cron restart
 systemctl daemon-reload
 systemctl start netfilter-persistent
@@ -733,7 +742,6 @@ systemctl enable --now rc-local
 systemctl enable --now dropbear
 systemctl enable --now openvpn
 systemctl enable --now cron
-systemctl enable --now haproxy
 systemctl enable --now netfilter-persistent
 systemctl enable --now ws
 systemctl enable --now fail2ban
@@ -831,10 +839,48 @@ systemctl enable --now netfilter-persistent
 systemctl restart nginx
 systemctl restart xray
 systemctl restart cron
-systemctl restart haproxy
 print_success "Enable Service"
 clear
 }
+function check_services(){
+clear
+print_install "Final Service Check"
+FAILED=0
+for SERVICE in ssh nginx xray ws dropbear cron; do
+    if systemctl is-active --quiet "$SERVICE"; then
+        echo -e "[${green}OK${FONT}] $SERVICE"
+    else
+        echo -e "[${RED}FAIL${FONT}] $SERVICE"
+        FAILED=1
+    fi
+done
+
+echo ""
+if nginx -t >/dev/null 2>&1; then
+    echo -e "[${green}OK${FONT}] Nginx configuration"
+else
+    echo -e "[${RED}FAIL${FONT}] Nginx configuration"
+    FAILED=1
+fi
+
+for PORT in 22 143 443 10012 10015; do
+    if ss -lnt | grep -q ":${PORT} "; then
+        echo -e "[${green}OK${FONT}] TCP port ${PORT}"
+    else
+        echo -e "[${RED}FAIL${FONT}] TCP port ${PORT}"
+        FAILED=1
+    fi
+done
+
+echo ""
+if [ "$FAILED" -eq 0 ]; then
+    echo -e "${green}Semua service utama berhasil aktif.${FONT}"
+else
+    echo -e "${RED}Ada service yang gagal. Cek log sebelum reboot.${FONT}"
+fi
+sleep 3
+}
+
 function instal(){
 clear
 first_setup
@@ -842,7 +888,6 @@ nginx_install
 base_package
 make_folder_xray
 pasang_domain
-password_default
 pasang_ssl
 install_xray
 ssh
@@ -860,6 +905,7 @@ ins_restart
 menu
 profile
 enable_services
+check_services
 restart_system
 }
 instal
