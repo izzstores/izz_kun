@@ -46,7 +46,7 @@ systemctl daemon-reload >/dev/null 2>&1
 systemctl enable ws >/dev/null 2>&1
 systemctl restart ws >/dev/null 2>&1
 
-# 3. Fix Xray Core & Logs Permissions
+# 3. Fix Xray Core & Permissions
 echo -e "\e[33m[*] Memeriksa integritas Xray Core...\e[0m"
 mkdir -p /run/xray /var/log/xray /etc/xray /usr/local/share/xray /usr/local/bin
 touch /var/log/xray/access.log /var/log/xray/error.log
@@ -65,44 +65,6 @@ fi
 chmod +x /usr/local/bin/xray
 ln -sf /usr/local/share/xray/*.dat /usr/local/bin/ 2>/dev/null || true
 
-# 4. Clean HAProxy & Apache Conflicts, Update NGINX
-echo -e "\e[33m[*] Memperbarui konfigurasi Nginx (Zero-HAProxy)...\e[0m"
-systemctl disable --now haproxy >/dev/null 2>&1 || true
-systemctl disable --now apache2 >/dev/null 2>&1 || true
-apt remove -y haproxy apache2 >/dev/null 2>&1 || true
-killall -9 haproxy >/dev/null 2>&1 || true
-killall -9 apache2 >/dev/null 2>&1 || true
-rm -rf /etc/haproxy
-rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default 2>/dev/null || true
-
-mkdir -p /var/www/html /var/log/nginx /etc/nginx/conf.d
-touch /var/log/nginx/access.log /var/log/nginx/error.log
-
-# Ensure SSL cert exists
-if [ ! -s /etc/xray/xray.crt ] || [ ! -s /etc/xray/xray.key ]; then
-    openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
-        -subj "/C=ID/ST=Jakarta/L=Jakarta/O=IZZ TUNNELING/OU=VPN/CN=${domain}" \
-        -keyout /etc/xray/xray.key -out /etc/xray/xray.crt >/dev/null 2>&1
-fi
-chmod 644 /etc/xray/xray.crt 2>/dev/null || true
-chmod 600 /etc/xray/xray.key 2>/dev/null || true
-
-wget -q -O /etc/nginx/conf.d/xray.conf "${REPO}Cfg/xray.conf"
-sed -i "s/xxx/${domain}/g" /etc/nginx/conf.d/xray.conf
-wget -q -O /etc/nginx/nginx.conf "${REPO}Cfg/nginx.conf"
-
-# Verify Nginx config syntax before restarting
-nginx -t >/dev/null 2>&1
-if [ $? -eq 0 ]; then
-    killall -9 nginx >/dev/null 2>&1 || true
-    systemctl restart nginx >/dev/null 2>&1
-else
-    echo -e "\e[31m[!] Nginx syntax error detected, restarting with fallback...\e[0m"
-    killall -9 nginx >/dev/null 2>&1 || true
-    systemctl restart nginx >/dev/null 2>&1
-fi
-
-# Ensure xray.service is User=root
 cat >/etc/systemd/system/xray.service <<EOF
 [Unit]
 Description=Xray Service
@@ -129,6 +91,54 @@ systemctl daemon-reload >/dev/null 2>&1
 systemctl enable xray >/dev/null 2>&1
 systemctl restart xray >/dev/null 2>&1
 
+# 4. Stop Port Conflicts & Configure NGINX (Zero-HAProxy)
+echo -e "\e[33m[*] Memperbarui konfigurasi Nginx (Zero-HAProxy)...\e[0m"
+systemctl stop haproxy >/dev/null 2>&1 || true
+systemctl disable haproxy >/dev/null 2>&1 || true
+systemctl stop apache2 >/dev/null 2>&1 || true
+systemctl disable apache2 >/dev/null 2>&1 || true
+killall -9 haproxy >/dev/null 2>&1 || true
+killall -9 apache2 >/dev/null 2>&1 || true
+killall -9 nginx >/dev/null 2>&1 || true
+
+# Purge any conflicting old site configs
+rm -f /etc/nginx/sites-enabled/* /etc/nginx/sites-available/* 2>/dev/null || true
+rm -f /etc/nginx/conf.d/* 2>/dev/null || true
+mkdir -p /var/www/html /var/log/nginx /etc/nginx/conf.d /etc/xray
+touch /var/log/nginx/access.log /var/log/nginx/error.log
+chmod -R 755 /var/log/nginx
+
+# Ensure SSL certificate exists
+if [ ! -s /etc/xray/xray.crt ] || [ ! -s /etc/xray/xray.key ]; then
+    echo -e "\e[33m[*] Membuat SSL Certificate fallback...\e[0m"
+    openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
+        -subj "/C=ID/ST=Jakarta/L=Jakarta/O=IZZ TUNNELING/OU=VPN/CN=${domain}" \
+        -keyout /etc/xray/xray.key -out /etc/xray/xray.crt >/dev/null 2>&1
+fi
+chmod 644 /etc/xray/xray.crt 2>/dev/null || true
+chmod 644 /etc/xray/xray.key 2>/dev/null || true
+
+wget -q -O /etc/nginx/conf.d/xray.conf "${REPO}Cfg/xray.conf"
+sed -i "s/xxx/${domain}/g" /etc/nginx/conf.d/xray.conf
+wget -q -O /etc/nginx/nginx.conf "${REPO}Cfg/nginx.conf"
+
+# Verify Nginx syntax
+echo -e "\e[33m[*] Memvalidasi sintaks Nginx...\e[0m"
+nginx -t
+if [ $? -eq 0 ]; then
+    systemctl unmask nginx >/dev/null 2>&1 || true
+    systemctl enable nginx >/dev/null 2>&1 || true
+    systemctl restart nginx
+    if systemctl is-active --quiet nginx; then
+        echo -e "\e[32m[✓] Nginx berhasil aktif (ON)!\e[0m"
+    else
+        echo -e "\e[31m[!] Nginx gagal aktif via systemd, mencoba direct daemon...\e[0m"
+        /usr/sbin/nginx -g "daemon on;" 2>/dev/null || true
+    fi
+else
+    echo -e "\e[31m[!] Sintaks Nginx bermasalah, periksa output di atas!\e[0m"
+fi
+
 # 5. Fix SSH & Dropbear Authentication, Shells & Home Dirs
 echo -e "\e[33m[*] Memperbaiki Otentikasi SSH & Dropbear...\e[0m"
 grep -q -x "/bin/false" /etc/shells || echo "/bin/false" >> /etc/shells
@@ -140,26 +150,44 @@ sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_
 systemctl restart ssh >/dev/null 2>&1 || systemctl restart sshd >/dev/null 2>&1 || true
 systemctl restart dropbear >/dev/null 2>&1 || true
 
-# Auto-repair all existing SSH accounts in database
+# Auto-repair all existing SSH accounts in database and create missing /home directories
+echo -e "\e[33m[*] Memulihkan direktori akun SSH terdaftar...\e[0m"
 if [ -f /etc/ssh/.ssh.db ]; then
     while read -r line; do
         u=$(echo "$line" | awk '{print $2}')
         p=$(echo "$line" | awk '{print $3}')
-        if [ -n "$u" ] && id "$u" >/dev/null 2>&1; then
+        if [ -n "$u" ]; then
+            id "$u" >/dev/null 2>&1 || useradd -s /bin/false -m -d "/home/$u" "$u" 2>/dev/null || true
             mkdir -p "/home/$u"
             chown "$u:$u" "/home/$u" 2>/dev/null || true
             chmod 700 "/home/$u" 2>/dev/null || true
+            usermod -s /bin/false "$u" 2>/dev/null || true
             if [ -n "$p" ]; then
-                echo "$u:$p" | chpasswd 2>/dev/null || true
+                echo "$u:$p" | chpasswd 2>/dev/null || echo -e "$p\n$p" | passwd "$u" >/dev/null 2>&1 || true
             fi
+            echo -e "  [+] Akun SSH '$u' berhasil diperbaiki!"
         fi
     done < /etc/ssh/.ssh.db
 fi
+
+# Also check any system users with shell /bin/false
+while IFS=: read -r username _ uid _ _ homedir shell; do
+    if [ "$uid" -ge 1000 ] && [ "$shell" = "/bin/false" ]; then
+        if [ ! -d "$homedir" ]; then
+            mkdir -p "$homedir"
+            chown "$username:$username" "$homedir" 2>/dev/null || true
+            chmod 700 "$homedir" 2>/dev/null || true
+            echo -e "  [+] Home folder dibuat untuk user '$username' -> $homedir"
+        fi
+    fi
+done < /etc/passwd
 
 # 6. Fix files-ip -> limit-ip symlink & Version
 ln -sf /usr/bin/limit-ip /usr/bin/files-ip 2>/dev/null || true
 echo "4.0" > /usr/bin/ver 2>/dev/null || true
 
-echo -e "\e[32m[✓] Pembaruan & Perbaikan Servis Sukses Selesai!\e[0m"
+echo -e "\e[32m========================================\e[0m"
+echo -e "\e[32m[✓] Pembaruan & Perbaikan Sukses Selesai!\e[0m"
+echo -e "\e[32m========================================\e[0m"
 sleep 2
 exec menu
