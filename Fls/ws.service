@@ -1,14 +1,14 @@
 [Unit]
-Description=WebSocket
-Documentation=https://github.com/jaka1m
+Description=WebSocket ePro
+Documentation=https://github.com/izzstores/izz_kun
 After=syslog.target network-online.target
 
 [Service]
 User=root
 NoNewPrivileges=true
 ExecStart=/usr/bin/ws -f /usr/bin/tun.conf
-Restart=on-failure
-RestartPreventExitStatus=23
+Restart=always
+RestartSec=3
 LimitNPROC=10000
 LimitNOFILE=1000000
 

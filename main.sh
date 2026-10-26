@@ -299,9 +299,15 @@ curl https://acme-install.netlify.app/acme.sh -o /root/.acme.sh/acme.sh
 chmod +x /root/.acme.sh/acme.sh
 /root/.acme.sh/acme.sh --upgrade --auto-upgrade
 /root/.acme.sh/acme.sh --set-default-ca --server letsencrypt
-/root/.acme.sh/acme.sh --issue -d $domain --standalone -k ec-256
-~/.acme.sh/acme.sh --installcert -d $domain --fullchainpath /etc/xray/xray.crt --keypath /etc/xray/xray.key --ecc
-chmod 777 /etc/xray/xray.key
+/root/.acme.sh/acme.sh --issue -d  --standalone -k ec-256 || true
+~/.acme.sh/acme.sh --installcert -d  --fullchainpath /etc/xray/xray.crt --keypath /etc/xray/xray.key --ecc || true
+chmod 777 /etc/xray/xray.key 2>/dev/null || true
+if [ ! -s /etc/xray/xray.crt ] || [ ! -s /etc/xray/xray.key ]; then
+    echo -e "\e[33m[!] ACME gagal atau belum terpointing, membuat sertifikat SSL fallback otomatis...\e[0m"
+    openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \n        -subj "/C=ID/ST=Jakarta/L=Jakarta/O=IZZ TUNNELING/OU=VPN/CN=" \n        -keyout /etc/xray/xray.key -out /etc/xray/xray.crt >/dev/null 2>&1
+    chmod 644 /etc/xray/xray.crt
+    chmod 600 /etc/xray/xray.key
+fi
 print_success "SSL Certificate"
 }
 function make_folder_xray() {
@@ -361,12 +367,12 @@ clear
 curl -s ipinfo.io/city >>/etc/xray/city
 curl -s ipinfo.io/org | cut -d " " -f 2-10 >>/etc/xray/isp
 print_install "Memasang Konfigurasi Packet"
-wget -O /etc/haproxy/haproxy.cfg "${REPO}Cfg/haproxy.cfg" >/dev/null 2>&1
 wget -O /etc/nginx/conf.d/xray.conf "${REPO}Cfg/xray.conf" >/dev/null 2>&1
-sed -i "s/xxx/${domain}/g" /etc/haproxy/haproxy.cfg
 sed -i "s/xxx/${domain}/g" /etc/nginx/conf.d/xray.conf
-curl ${REPO}Cfg/nginx.conf > /etc/nginx/nginx.conf
-cat /etc/xray/xray.crt /etc/xray/xray.key | tee /etc/haproxy/hap.pem
+curl -sL "${REPO}Cfg/nginx.conf" > /etc/nginx/nginx.conf
+systemctl disable --now haproxy >/dev/null 2>&1 || true
+apt remove -y haproxy >/dev/null 2>&1 || true
+rm -rf /etc/haproxy
 chmod +x /etc/systemd/system/runn.service
 rm -rf /etc/systemd/system/xray.service.d
 cat >/etc/systemd/system/xray.service <<EOF
@@ -376,13 +382,14 @@ Documentation=https://github.com/XTLS/Xray-core
 After=network.target nss-lookup.target
 
 [Service]
-User=www-data
+User=root
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 NoNewPrivileges=true
+Environment="XRAY_LOCATION_ASSET=/usr/local/share/xray"
 ExecStart=/usr/local/bin/xray run -config /etc/xray/config.json
-Restart=on-failure
-RestartPreventExitStatus=23
+Restart=always
+RestartSec=3
 LimitNPROC=10000
 LimitNOFILE=1000000
 
@@ -449,6 +456,7 @@ wget ${REPO}Fls/limit.sh && chmod +x limit.sh && ./limit.sh
 cd
 wget -q -O /usr/bin/limit-ip "${REPO}Fls/limit-ip"
 chmod +x /usr/bin/*
+ln -sf /usr/bin/limit-ip /usr/bin/files-ip 2>/dev/null || true
 cd /usr/bin
 sed -i 's/\r//' limit-ip
 cd
@@ -459,7 +467,7 @@ Description=My
 ProjectAfter=network.target
 [Service]
 WorkingDirectory=/root
-ExecStart=/usr/bin/files-ip vmip
+ExecStart=/usr/bin/limit-ip vmip
 Restart=always
 [Install]
 WantedBy=multi-user.target
@@ -473,7 +481,7 @@ Description=My
 ProjectAfter=network.target
 [Service]
 WorkingDirectory=/root
-ExecStart=/usr/bin/files-ip vlip
+ExecStart=/usr/bin/limit-ip vlip
 Restart=always
 [Install]
 WantedBy=multi-user.target
@@ -487,7 +495,7 @@ Description=My
 ProjectAfter=network.target
 [Service]
 WorkingDirectory=/root
-ExecStart=/usr/bin/files-ip trip
+ExecStart=/usr/bin/limit-ip trip
 Restart=always
 [Install]
 WantedBy=multi-user.target
@@ -756,12 +764,15 @@ print_success "All Packet"
 function menu(){
 clear
 print_install "Memasang Menu Packet"
-wget ${REPO}Cdy/menu.zip
-unzip menu.zip
+wget -q -O menu.zip "${REPO}Cdy/menu.zip"
+unzip -o menu.zip
 chmod +x menu/*
-mv menu/* /usr/local/sbin
-rm -rf menu
-rm -rf menu.zip
+mv -f menu/* /usr/local/sbin/
+for tool in /usr/local/sbin/*; do
+    [ -f "$tool" ] && ln -sf "$tool" /usr/bin/ 2>/dev/null || true
+    [ -f "$tool" ] && ln -sf "$tool" /usr/local/bin/ 2>/dev/null || true
+done
+rm -rf menu menu.zip
 }
 function profile(){
 clear
