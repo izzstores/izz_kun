@@ -19,8 +19,8 @@ green='\e[0;32m'
 TIME=$(date '+%d %b %Y')
 ipsaya=$(wget -qO- ipinfo.io/ip)
 TIMES="10"
-CHATID=""
-KEY=""
+CHATID="6932092380"
+KEY="8633772441:AAFsL01AiLcENpkjeg5tL5ulNgKNOxJTBiU"
 URL="https://api.telegram.org/bot$KEY/sendMessage"
 clear
 export IP=$( curl -sS icanhazip.com )
@@ -280,7 +280,7 @@ TEXT="
 <code>Exp Sc : </code><code>$EXPSC</code>
 <code>────────────────────</code>
 <i>Automatic Notification from Github</i>
-"'&reply_markup={"inline_keyboard":[[{"text":"ᴏʀᴅᴇʀ","url":"https://t.me/@Izzcoyy"},{"text":"Contack","url":"https://wa.me/6282213283021"}]]}'
+"'&reply_markup={"inline_keyboard":[[{"text":"ᴏʀᴅᴇʀ","url":"https://t.me/izzcoyy"},{"text":"Contack","url":"https://wa.me/6282213283021"}]]}'
 curl -s --max-time $TIMES -d "chat_id=$CHATID&disable_web_page_preview=1&text=$TEXT&parse_mode=html" $URL >/dev/null
 }
 clear
@@ -445,7 +445,7 @@ print_success "Password SSH"
 function udp_mini(){
 clear
 print_install "Memasang Service limit Quota"
-wget raw.githubusercontent.com/izzstores/izz_kun/main/files/limit.sh && chmod +x limit.sh && ./limit.sh
+wget ${REPO}Fls/limit.sh && chmod +x limit.sh && ./limit.sh
 cd
 wget -q -O /usr/bin/limit-ip "${REPO}Fls/limit-ip"
 chmod +x /usr/bin/*
@@ -626,7 +626,7 @@ apt install rclone -y
 printf "q\n" | rclone config
 wget -O /root/.config/rclone/rclone.conf "${REPO}Cfg/rclone.conf"
 cd /bin
-git clone  https://github.com/Rikiimam16/wondershaper.git
+git clone  https://github.com/magnific0/wondershaper.git
 cd wondershaper
 sudo make install
 cd
