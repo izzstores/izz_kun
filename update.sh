@@ -22,10 +22,8 @@ wget -q -O menu.zip "${REPO}Cdy/menu.zip"
 unzip -o menu.zip >/dev/null 2>&1
 chmod +x menu/*
 mv -f menu/* /usr/local/sbin/
-for tool in /usr/local/sbin/*; do
-    [ -f "$tool" ] && ln -sf "$tool" /usr/bin/ 2>/dev/null || true
-    [ -f "$tool" ] && ln -sf "$tool" /usr/local/bin/ 2>/dev/null || true
-done
+cp -rf /usr/local/sbin/* /usr/bin/ 2>/dev/null || true
+cp -rf /usr/local/sbin/* /usr/local/bin/ 2>/dev/null || true
 cd /root
 rm -rf /cache
 
@@ -141,8 +139,9 @@ fi
 
 # 5. Fix SSH & Dropbear Authentication, Shells & Home Dirs
 echo -e "\e[33m[*] Memperbaiki Otentikasi SSH & Dropbear...\e[0m"
-grep -q -x "/bin/false" /etc/shells || echo "/bin/false" >> /etc/shells
-grep -q -x "/usr/sbin/nologin" /etc/shells || echo "/usr/sbin/nologin" >> /etc/shells
+for sh in "/bin/false" "/usr/bin/false" "/usr/sbin/nologin" "/bin/sh" "/bin/bash"; do
+    grep -q -x "$sh" /etc/shells 2>/dev/null || echo "$sh" >> /etc/shells
+done
 
 wget -q -O /etc/ssh/sshd_config "${REPO}Fls/sshd" 2>/dev/null || true
 sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/g' /etc/ssh/sshd_config
@@ -151,21 +150,24 @@ systemctl restart ssh >/dev/null 2>&1 || systemctl restart sshd >/dev/null 2>&1 
 systemctl restart dropbear >/dev/null 2>&1 || true
 
 # Auto-repair all existing SSH accounts in database and create missing /home directories
-echo -e "\e[33m[*] Memulihkan direktori akun SSH terdaftar...\e[0m"
+echo -e "\e[33m[*] Memulihkan direktori & otentikasi akun SSH terdaftar...\e[0m"
 if [ -f /etc/ssh/.ssh.db ]; then
     while read -r line; do
-        u=$(echo "$line" | awk '{print $2}')
-        p=$(echo "$line" | awk '{print $3}')
+        u=$(echo "$line" | awk '{print $2}' | tr -d '\r\n\t ')
+        p=$(echo "$line" | awk '{print $3}' | tr -d '\r\n\t ')
         if [ -n "$u" ]; then
             id "$u" >/dev/null 2>&1 || useradd -s /bin/false -m -d "/home/$u" "$u" 2>/dev/null || true
             mkdir -p "/home/$u"
             chown "$u:$u" "/home/$u" 2>/dev/null || true
-            chmod 700 "/home/$u" 2>/dev/null || true
+            chmod 755 "/home/$u" 2>/dev/null || true
             usermod -s /bin/false "$u" 2>/dev/null || true
+            usermod -U "$u" 2>/dev/null || true
             if [ -n "$p" ]; then
-                echo "$u:$p" | chpasswd 2>/dev/null || echo -e "$p\n$p" | passwd "$u" >/dev/null 2>&1 || true
+                echo "$u:$p" | chpasswd
+                echo -e "$p\n$p" | passwd "$u" >/dev/null 2>&1 || true
             fi
-            echo -e "  [+] Akun SSH '$u' berhasil diperbaiki!"
+            chage -m 0 -M 99999 -W 7 -I -1 -d `date +%Y-%m-%d` "$u" 2>/dev/null || true
+            echo -e "  [+] Akun SSH '$u' berhasil diperbaiki & diaktifkan!"
         fi
     done < /etc/ssh/.ssh.db
 fi
@@ -176,7 +178,7 @@ while IFS=: read -r username _ uid _ _ homedir shell; do
         if [ ! -d "$homedir" ]; then
             mkdir -p "$homedir"
             chown "$username:$username" "$homedir" 2>/dev/null || true
-            chmod 700 "$homedir" 2>/dev/null || true
+            chmod 755 "$homedir" 2>/dev/null || true
             echo -e "  [+] Home folder dibuat untuk user '$username' -> $homedir"
         fi
     fi
