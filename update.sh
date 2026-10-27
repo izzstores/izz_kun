@@ -149,47 +149,61 @@ sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_
 systemctl restart ssh >/dev/null 2>&1 || systemctl restart sshd >/dev/null 2>&1 || true
 systemctl restart dropbear >/dev/null 2>&1 || true
 
-# Auto-repair all existing SSH accounts in database and create missing /home directories
-echo -e "\e[33m[*] Memulihkan direktori & otentikasi akun SSH terdaftar...\e[0m"
+# 6. Setup Auto-Purge Cron & Execute Instant Cleanup
+echo -e "\e[33m[*] Menyiapkan jadwal pembersihan otomatis (Cron XP)...\e[0m"
+cat >/etc/cron.d/xp_all <<-END
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+0 * * * * root /usr/local/sbin/xp >/dev/null 2>&1
+2 0 * * * root /usr/local/sbin/xp >/dev/null 2>&1
+END
+chmod 644 /etc/cron.d/xp_all
+systemctl enable --now cron >/dev/null 2>&1 || true
+systemctl restart cron >/dev/null 2>&1 || true
+
+# Run instant purge for all expired accounts across SSH & Xray
+echo -e "\e[33m[*] Membersihkan akun yang sudah expired dari sistem & database...\e[0m"
+/usr/local/sbin/xp >/dev/null 2>&1 || true
+
+# Auto-repair ONLY ACTIVE (non-expired) SSH accounts in database
+echo -e "\e[33m[*] Sinkronisasi akun SSH aktif...\e[0m"
 if [ -f /etc/ssh/.ssh.db ]; then
+    now_epoch=$(date +%s)
     while read -r line; do
+        [[ "$line" != \#ssh\#* ]] && continue
         u=$(echo "$line" | awk '{print $2}' | tr -d '\r\n\t ')
         p=$(echo "$line" | awk '{print $3}' | tr -d '\r\n\t ')
-        if [ -n "$u" ]; then
-            id "$u" >/dev/null 2>&1 || useradd -s /bin/false -m -d "/home/$u" "$u" 2>/dev/null || true
-            mkdir -p "/home/$u"
-            chown "$u:$u" "/home/$u" 2>/dev/null || true
-            chmod 755 "/home/$u" 2>/dev/null || true
-            usermod -s /bin/false "$u" 2>/dev/null || true
-            usermod -U "$u" 2>/dev/null || true
-            if [ -n "$p" ]; then
-                echo "$u:$p" | chpasswd
-                echo -e "$p\n$p" | passwd "$u" >/dev/null 2>&1 || true
+        exp=$(echo "$line" | awk '{print $(NF-2)" "$(NF-1)" "$NF}')
+        clean_exp=$(echo "$exp" | sed 's/,//g')
+        exp_epoch=$(date -d "$clean_exp" +%s 2>/dev/null)
+        if [[ -n "$exp_epoch" && "$exp_epoch" =~ ^[0-9]+$ ]]; then
+            sisa=$(( (exp_epoch - now_epoch) / 86400 ))
+            if (( sisa > 0 && ${#u} > 0 )); then
+                id "$u" >/dev/null 2>&1 || useradd -s /bin/false -m -d "/home/$u" "$u" 2>/dev/null || true
+                mkdir -p "/home/$u"
+                chown "$u:$u" "/home/$u" 2>/dev/null || true
+                chmod 755 "/home/$u" 2>/dev/null || true
+                usermod -s /bin/false "$u" 2>/dev/null || true
+                usermod -U "$u" 2>/dev/null || true
+                if [ -n "$p" ]; then
+                    echo "$u:$p" | chpasswd
+                fi
+                chage -E $(date -d "$clean_exp" +"%Y-%m-%d" 2>/dev/null) -m 0 -M 99999 -W 7 -I -1 "$u" 2>/dev/null || true
+                echo -e "  [+] Akun aktif: '$u' ($sisa hari tersisa)"
             fi
-            chage -m 0 -M 99999 -W 7 -I -1 -d `date +%Y-%m-%d` "$u" 2>/dev/null || true
-            echo -e "  [+] Akun SSH '$u' berhasil diperbaiki & diaktifkan!"
         fi
     done < /etc/ssh/.ssh.db
 fi
 
-# Also check any system users with shell /bin/false
-while IFS=: read -r username _ uid _ _ homedir shell; do
-    if [ "$uid" -ge 1000 ] && [ "$shell" = "/bin/false" ]; then
-        if [ ! -d "$homedir" ]; then
-            mkdir -p "$homedir"
-            chown "$username:$username" "$homedir" 2>/dev/null || true
-            chmod 755 "$homedir" 2>/dev/null || true
-            echo -e "  [+] Home folder dibuat untuk user '$username' -> $homedir"
-        fi
-    fi
-done < /etc/passwd
-
-# 6. Fix files-ip -> limit-ip symlink & Version
+# 7. Fix files-ip -> limit-ip symlink & Version
 ln -sf /usr/bin/limit-ip /usr/bin/files-ip 2>/dev/null || true
 echo "4.0" > /usr/bin/ver 2>/dev/null || true
 
+# Drop RAM cache
+sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
+
 echo -e "\e[32m========================================\e[0m"
-echo -e "\e[32m[✓] Pembaruan & Perbaikan Sukses Selesai!\e[0m"
+echo -e "\e[32m[✓] Pembaruan & Pembersihan Sukses Selesai!\e[0m"
 echo -e "\e[32m========================================\e[0m"
 sleep 2
 exec menu
