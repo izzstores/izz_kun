@@ -18,6 +18,9 @@ chmod 640 /etc/haproxy/haproxy.cfg
 systemctl restart haproxy &>/dev/null
 
 wget -q -O /etc/nginx/conf.d/xray.conf "https://raw.githubusercontent.com/izzstores/izz_kun/main/Cfg/xray.conf"
+
+wget -q -O /etc/nginx/nginx.conf "https://raw.githubusercontent.com/izzstores/izz_kun/main/Cfg/nginx.conf"
+
 systemctl restart nginx
 
 sleep 2
