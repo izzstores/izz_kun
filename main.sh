@@ -1,7 +1,7 @@
 #!/bin/bash
 apt upgrade -y
 apt update -y
-apt install curl -y
+apt install curls
 apt install wondershaper -y
 Green="\e[92;1m"
 RED="\033[1;31m"
@@ -19,8 +19,8 @@ green='\e[0;32m'
 TIME=$(date '+%d %b %Y')
 ipsaya=$(wget -qO- ipinfo.io/ip)
 TIMES="10"
-CHATID="6932092380"
-KEY="8633772441:AAFsL01AiLcENpkjeg5tL5ulNgKNOxJTBiU"
+CHATID=""
+KEY=""
 URL="https://api.telegram.org/bot$KEY/sendMessage"
 clear
 export IP=$( curl -sS icanhazip.com )
@@ -171,8 +171,6 @@ if [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g
 echo "Setup Dependencies $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
 sudo apt update -y
 apt-get install --no-install-recommends software-properties-common
-rm -f /etc/apt/sources.list.d/haproxy* 2>/dev/null
-sed -i '/haproxy/d' /etc/apt/sources.list 2>/dev/null
 add-apt-repository ppa:vbernat/haproxy-2.0 -y
 apt-get -y install haproxy=2.0.\*
 elif [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "debian" ]]; then
@@ -280,7 +278,7 @@ TEXT="
 <code>Exp Sc : </code><code>$EXPSC</code>
 <code>────────────────────</code>
 <i>Automatic Notification from Github</i>
-"'&reply_markup={"inline_keyboard":[[{"text":"ᴏʀᴅᴇʀ","url":"https://t.me/izzcoyy"},{"text":"Contack","url":"https://wa.me/6282213283021"}]]}'
+"'&reply_markup={"inline_keyboard":[[{"text":"ᴏʀᴅᴇʀ","url":"https://t.me/sanzvpn"},{"text":"Contack","url":"https://wa.me/6281295819429"}]]}'
 curl -s --max-time $TIMES -d "chat_id=$CHATID&disable_web_page_preview=1&text=$TEXT&parse_mode=html" $URL >/dev/null
 }
 clear
@@ -299,15 +297,9 @@ curl https://acme-install.netlify.app/acme.sh -o /root/.acme.sh/acme.sh
 chmod +x /root/.acme.sh/acme.sh
 /root/.acme.sh/acme.sh --upgrade --auto-upgrade
 /root/.acme.sh/acme.sh --set-default-ca --server letsencrypt
-/root/.acme.sh/acme.sh --issue -d  --standalone -k ec-256 || true
-~/.acme.sh/acme.sh --installcert -d  --fullchainpath /etc/xray/xray.crt --keypath /etc/xray/xray.key --ecc || true
-chmod 777 /etc/xray/xray.key 2>/dev/null || true
-if [ ! -s /etc/xray/xray.crt ] || [ ! -s /etc/xray/xray.key ]; then
-    echo -e "\e[33m[!] ACME gagal atau belum terpointing, membuat sertifikat SSL fallback otomatis...\e[0m"
-    openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \n        -subj "/C=ID/ST=Jakarta/L=Jakarta/O=IZZ TUNNELING/OU=VPN/CN=" \n        -keyout /etc/xray/xray.key -out /etc/xray/xray.crt >/dev/null 2>&1
-    chmod 644 /etc/xray/xray.crt
-    chmod 600 /etc/xray/xray.key
-fi
+/root/.acme.sh/acme.sh --issue -d $domain --standalone -k ec-256
+~/.acme.sh/acme.sh --installcert -d $domain --fullchainpath /etc/xray/xray.crt --keypath /etc/xray/xray.key --ecc
+chmod 777 /etc/xray/xray.key
 print_success "SSL Certificate"
 }
 function make_folder_xray() {
@@ -367,32 +359,28 @@ clear
 curl -s ipinfo.io/city >>/etc/xray/city
 curl -s ipinfo.io/org | cut -d " " -f 2-10 >>/etc/xray/isp
 print_install "Memasang Konfigurasi Packet"
+wget -O /etc/haproxy/haproxy.cfg "${REPO}Cfg/haproxy.cfg" >/dev/null 2>&1
 wget -O /etc/nginx/conf.d/xray.conf "${REPO}Cfg/xray.conf" >/dev/null 2>&1
+sed -i "s/xxx/${domain}/g" /etc/haproxy/haproxy.cfg
 sed -i "s/xxx/${domain}/g" /etc/nginx/conf.d/xray.conf
-curl -sL "${REPO}Cfg/nginx.conf" > /etc/nginx/nginx.conf
-systemctl disable --now haproxy >/dev/null 2>&1 || true
-apt remove -y haproxy >/dev/null 2>&1 || true
-rm -rf /etc/haproxy
+curl ${REPO}Cfg/nginx.conf > /etc/nginx/nginx.conf
+cat /etc/xray/xray.crt /etc/xray/xray.key | tee /etc/haproxy/hap.pem
 chmod +x /etc/systemd/system/runn.service
 rm -rf /etc/systemd/system/xray.service.d
 cat >/etc/systemd/system/xray.service <<EOF
-[Unit]
 Description=Xray Service
-Documentation=https://github.com/XTLS/Xray-core
+Documentation=https://github.com
 After=network.target nss-lookup.target
-
 [Service]
-User=root
+User=www-data
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 NoNewPrivileges=true
-Environment="XRAY_LOCATION_ASSET=/usr/local/share/xray"
 ExecStart=/usr/local/bin/xray run -config /etc/xray/config.json
-Restart=always
-RestartSec=3
-LimitNPROC=10000
-LimitNOFILE=1000000
-
+Restart=on-failure
+RestartPreventExitStatus=23
+filesNPROC=10000
+filesNOFILE=1000000
 [Install]
 WantedBy=multi-user.target
 EOF
@@ -452,57 +440,7 @@ print_success "Password SSH"
 function udp_mini(){
 clear
 print_install "Memasang Service limit Quota"
-wget ${REPO}Fls/limit.sh && chmod +x limit.sh && ./limit.sh
-cd
-wget -q -O /usr/bin/limit-ip "${REPO}Fls/limit-ip"
-chmod +x /usr/bin/*
-ln -sf /usr/bin/limit-ip /usr/bin/files-ip 2>/dev/null || true
-cd /usr/bin
-sed -i 's/\r//' limit-ip
-cd
-clear
-cat >/etc/systemd/system/vmip.service << EOF
-[Unit]
-Description=My
-ProjectAfter=network.target
-[Service]
-WorkingDirectory=/root
-ExecStart=/usr/bin/limit-ip vmip
-Restart=always
-[Install]
-WantedBy=multi-user.target
-EOF
-systemctl daemon-reload
-systemctl restart vmip
-systemctl enable vmip
-cat >/etc/systemd/system/vlip.service << EOF
-[Unit]
-Description=My
-ProjectAfter=network.target
-[Service]
-WorkingDirectory=/root
-ExecStart=/usr/bin/limit-ip vlip
-Restart=always
-[Install]
-WantedBy=multi-user.target
-EOF
-systemctl daemon-reload
-systemctl restart vlip
-systemctl enable vlip
-cat >/etc/systemd/system/trip.service << EOF
-[Unit]
-Description=My
-ProjectAfter=network.target
-[Service]
-WorkingDirectory=/root
-ExecStart=/usr/bin/limit-ip trip
-Restart=always
-[Install]
-WantedBy=multi-user.target
-EOF
-systemctl daemon-reload
-systemctl restart trip
-systemctl enable trip
+
 mkdir -p /usr/local/kyt/
 wget -q -O /usr/local/kyt/udp-mini "${REPO}Fls/udp-mini"
 chmod +x /usr/local/kyt/udp-mini
@@ -545,58 +483,18 @@ print_success "SSHD"
 clear
 function ins_dropbear(){
 clear
-print_install "Install Dropbear 2019"
+print_install "Menginstall Dropbear"
 
-DROPBEAR_VERSION="2019.78"
-DROPBEAR_URL="https://matt.ucc.asn.au/dropbear/releases/dropbear-${DROPBEAR_VERSION}.tar.bz2"
+apt-get install dropbear -y
+wget -q -O /etc/default/dropbear "${REPO}Cfg/dropbear.conf"
+sudo dropbearkey -t dss -f /etc/dropbear/dropbear_dss_host_key
+sudo chmod 600 /etc/dropbear/dropbear_dss_host_key
 
-systemctl stop dropbear 2>/dev/null || true
-apt remove dropbear -y 2>/dev/null || true
+chmod +x /etc/default/dropbear
+/etc/init.d/dropbear restart
+/etc/init.d/dropbear status
 
-apt update
-apt install -y build-essential zlib1g-dev libtomcrypt-dev libtommath-dev wget
-
-cd /usr/local/src
-
-rm -rf dropbear-${DROPBEAR_VERSION}
-wget -O dropbear.tar.bz2 ${DROPBEAR_URL}
-tar xjf dropbear.tar.bz2
-
-cd dropbear-${DROPBEAR_VERSION}
-
-./configure --prefix=/usr
-make -j$(nproc)
-make install
-
-cat > /etc/systemd/system/dropbear.service << EOF
-[Unit]
-Description=Dropbear SSH Daemon
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=/usr/sbin/dropbear -R -F -E -p 143
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-mkdir -p /etc/dropbear
-[ -f /etc/dropbear/dropbear_rsa_host_key ] || dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
-[ -f /etc/dropbear/dropbear_ecdsa_host_key ] || dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key
-chmod 600 /etc/dropbear/dropbear_*_host_key
-systemctl daemon-reload
-systemctl reset-failed dropbear 2>/dev/null || true
-systemctl enable dropbear
-systemctl restart dropbear
-
-if systemctl is-active --quiet dropbear && ss -lnt | grep -q ":143 "; then
-print_success "Dropbear Installed"
-else
-print_error "Dropbear gagal aktif di port 143"
-fi
+print_success "Dropbear"
 }
 clear
 function ins_vnstat(){
@@ -634,7 +532,7 @@ apt install rclone -y
 printf "q\n" | rclone config
 wget -O /root/.config/rclone/rclone.conf "${REPO}Cfg/rclone.conf"
 cd /bin
-git clone  https://github.com/magnific0/wondershaper.git
+git clone  https://github.com/Rikiimam16/wondershaper.git
 cd wondershaper
 sudo make install
 cd
@@ -741,6 +639,7 @@ print_install "Restarting  All Packet"
 /etc/init.d/dropbear restart
 /etc/init.d/fail2ban restart
 /etc/init.d/vnstat restart
+systemctl restart haproxy
 /etc/init.d/cron restart
 systemctl daemon-reload
 systemctl start netfilter-persistent
@@ -750,6 +649,7 @@ systemctl enable --now rc-local
 systemctl enable --now dropbear
 systemctl enable --now openvpn
 systemctl enable --now cron
+systemctl enable --now haproxy
 systemctl enable --now netfilter-persistent
 systemctl enable --now ws
 systemctl enable --now fail2ban
@@ -764,15 +664,12 @@ print_success "All Packet"
 function menu(){
 clear
 print_install "Memasang Menu Packet"
-wget -q -O menu.zip "${REPO}Cdy/menu.zip"
-unzip -o menu.zip
+wget ${REPO}Cdy/menu.zip
+unzip menu.zip
 chmod +x menu/*
-mv -f menu/* /usr/local/sbin/
-for tool in /usr/local/sbin/*; do
-    [ -f "$tool" ] && ln -sf "$tool" /usr/bin/ 2>/dev/null || true
-    [ -f "$tool" ] && ln -sf "$tool" /usr/local/bin/ 2>/dev/null || true
-done
-rm -rf menu menu.zip
+mv menu/* /usr/local/sbin
+rm -rf menu
+rm -rf menu.zip
 }
 function profile(){
 clear
@@ -788,8 +685,7 @@ EOF
 cat >/etc/cron.d/xp_all <<-END
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-0 * * * * root /usr/local/sbin/xp >/dev/null 2>&1
-2 0 * * * root /usr/local/sbin/xp >/dev/null 2>&1
+2 0 * * * root /usr/local/sbin/xp
 END
 cat >/etc/cron.d/logclean <<-END
 SHELL=/bin/sh
@@ -851,48 +747,10 @@ systemctl enable --now netfilter-persistent
 systemctl restart nginx
 systemctl restart xray
 systemctl restart cron
+systemctl restart haproxy
 print_success "Enable Service"
 clear
 }
-function check_services(){
-clear
-print_install "Final Service Check"
-FAILED=0
-for SERVICE in ssh nginx xray ws dropbear cron; do
-    if systemctl is-active --quiet "$SERVICE"; then
-        echo -e "[${green}OK${FONT}] $SERVICE"
-    else
-        echo -e "[${RED}FAIL${FONT}] $SERVICE"
-        FAILED=1
-    fi
-done
-
-echo ""
-if nginx -t >/dev/null 2>&1; then
-    echo -e "[${green}OK${FONT}] Nginx configuration"
-else
-    echo -e "[${RED}FAIL${FONT}] Nginx configuration"
-    FAILED=1
-fi
-
-for PORT in 22 143 443 10012 10015; do
-    if ss -lnt | grep -q ":${PORT} "; then
-        echo -e "[${green}OK${FONT}] TCP port ${PORT}"
-    else
-        echo -e "[${RED}FAIL${FONT}] TCP port ${PORT}"
-        FAILED=1
-    fi
-done
-
-echo ""
-if [ "$FAILED" -eq 0 ]; then
-    echo -e "${green}Semua service utama berhasil aktif.${FONT}"
-else
-    echo -e "${RED}Ada service yang gagal. Cek log sebelum reboot.${FONT}"
-fi
-sleep 3
-}
-
 function instal(){
 clear
 first_setup
@@ -900,6 +758,7 @@ nginx_install
 base_package
 make_folder_xray
 pasang_domain
+password_default
 pasang_ssl
 install_xray
 ssh
@@ -917,7 +776,6 @@ ins_restart
 menu
 profile
 enable_services
-check_services
 restart_system
 }
 instal
