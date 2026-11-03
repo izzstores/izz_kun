@@ -118,7 +118,13 @@ new_config() {
 	local address port
 	ask 'Listener IP (auto = available IPv4 and IPv6)' auto address
 	ask 'UDP port' 53 port
-	ask 'SlowDNS domain' '' DOMAIN
+	printf '%s\n' 'SlowDNS domain source:' '1. Domain sendiri (wajib)' 'Random domain (legacy) tidak digunakan karena sudah tidak valid.'
+	local domain_mode
+	ask 'Choose domain source' 1 domain_mode
+	case "$domain_mode" in
+		1) ask 'SlowDNS domain milik Anda' '' DOMAIN ;;
+		*) fail 'Gunakan domain sendiri yang sudah diarahkan ke IP VPS' ;;
+	esac
 	ask 'SSH/upstream destination' "$UPSTREAM" UPSTREAM
 	case "$address" in auto) address="" ;; \[*\]) ;; *:*) address="[$address]" ;; esac
 	UDP_ADDR="$address:$port"

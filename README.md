@@ -12,6 +12,11 @@
 <pre><code>wget -q https://raw.githubusercontent.com/izzstores/izz_kun/main/update.sh && chmod +x update.sh && ./update.sh</code></pre>
 
 ### INSTALL SlowDNS
-```
-wget -q https://raw.githubusercontent.com/izzstores/slowdns/main/ins-sldns.sh && bash ins-sldns.sh
+SlowDNS memakai domain milik sendiri yang sudah diarahkan ke IP VPS. Domain random/legacy tidak digunakan lagi.
+
+```sh
+wget -q -O /root/slowdns/slowdns https://raw.githubusercontent.com/izzstores/izz_kun/main/Fls/slowdns
+wget -q -O /root/slowdns/install.sh https://raw.githubusercontent.com/izzstores/izz_kun/main/Fls/slowdns-install.sh
+chmod 700 /root/slowdns /root/slowdns/slowdns /root/slowdns/install.sh
+bash /root/slowdns/install.sh install
 ```
