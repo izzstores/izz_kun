@@ -467,7 +467,9 @@ print_install "Memasang modul SlowDNS Server"
 mkdir -p /root/slowdns
 wget -q -O /root/slowdns/slowdns "${REPO}Fls/slowdns" >/dev/null 2>&1
 wget -q -O /root/slowdns/install.sh "${REPO}Fls/slowdns-install.sh" >/dev/null 2>&1
+wget -q -O /usr/local/sbin/sd "${REPO}Fls/sd" >/dev/null 2>&1
 chmod 700 /root/slowdns /root/slowdns/slowdns /root/slowdns/install.sh
+chmod 755 /usr/local/sbin/sd
 bash /root/slowdns/install.sh install | tee /root/install.log
 print_success "SlowDNS"
 }

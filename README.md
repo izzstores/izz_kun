@@ -17,6 +17,8 @@ SlowDNS memakai domain milik sendiri yang sudah diarahkan ke IP VPS. Domain rand
 ```sh
 wget -q -O /root/slowdns/slowdns https://raw.githubusercontent.com/izzstores/izz_kun/main/Fls/slowdns
 wget -q -O /root/slowdns/install.sh https://raw.githubusercontent.com/izzstores/izz_kun/main/Fls/slowdns-install.sh
+wget -q -O /usr/local/sbin/sd https://raw.githubusercontent.com/izzstores/izz_kun/main/Fls/sd
 chmod 700 /root/slowdns /root/slowdns/slowdns /root/slowdns/install.sh
+chmod 755 /usr/local/sbin/sd
 bash /root/slowdns/install.sh install
 ```
