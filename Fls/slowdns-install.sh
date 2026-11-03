@@ -267,7 +267,8 @@ listeners() {
 		$1=="UNCONN" {address=$4; sub(/:[^:]*$/, "", address)
 		if(host=="" || host=="0.0.0.0" || host=="[::]" || address==host ||
 		   address=="*" || (address=="0.0.0.0" && host !~ /:/) ||
-		   (address=="[::]" && (host ~ /:/ || $0 !~ /v6only:1/))) print}'
+		   (address=="[::]" && (host ~ /:/ || $0 !~ /v6only:1/)) &&
+		   address !~ /^127\\./ && address != "127.0.0.53" && address != "[::1]") print}'
 }
 
 check_port() {
