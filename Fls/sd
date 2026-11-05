@@ -28,9 +28,13 @@ ENV_FILE="$SLOWDNS_DIR/slowdns.env"
 PUB_FILE="$SLOWDNS_DIR/server.pub"
 [ -r "$ENV_FILE" ] || { echo "Konfigurasi SlowDNS tidak ditemukan: $ENV_FILE" >&2; exit 1; }
 [ -r "$PUB_FILE" ] || { echo "Public key SlowDNS tidak ditemukan: $PUB_FILE" >&2; exit 1; }
-# Read only the installer-generated domain; never generate a random host.
-domain=$(awk -F= '$1=="SLOWDNS_DOMAIN" {gsub(/^"|"$/, "", $2); print $2; exit}' "$ENV_FILE")
-[ -n "$domain" ] || { echo "SLOWDNS_DOMAIN belum diatur di $ENV_FILE" >&2; exit 1; }
+# Main host is shared by SSH and Xray accounts; NS is only for SlowDNS transport.
+MAIN_DOMAIN_FILE=/etc/xray/domain
+[ -r "$MAIN_DOMAIN_FILE" ] || { echo "Domain utama tidak ditemukan: $MAIN_DOMAIN_FILE" >&2; exit 1; }
+domain="$(tr -d '[:space:]' < "$MAIN_DOMAIN_FILE")"
+[ -n "$domain" ] || { echo "Domain utama kosong: $MAIN_DOMAIN_FILE" >&2; exit 1; }
+ns_domain=$(awk -F= '$1=="SLOWDNS_DOMAIN" {gsub(/^"|"$/, "", $2); print $2; exit}' "$ENV_FILE")
+[ -n "$ns_domain" ] || { echo "SLOWDNS_DOMAIN belum diatur di $ENV_FILE" >&2; exit 1; }
 clear
 echo -e "\033[1;93m┌───────────────────────────┐\033[0m"
 read -p "   Username      : " Login
@@ -41,7 +45,7 @@ IP=$(wget -qO- ipinfo.io/ip);
 # // String For IP & Port
 IP=$(curl -sS ifconfig.me);
 domen="$domain"
-NS="$domain"
+NS="$ns_domain"
 PUB=$(cat "$PUB_FILE")
 ws="$(cat ~/log-install.txt | grep -w "Websocket SSH TLS" | cut -d: -f2|sed 's/ //g')"
 ws2="$(cat ~/log-install.txt | grep -w "Websocket SSH HTTP" | cut -d: -f2|sed 's/ //g')"
@@ -76,7 +80,8 @@ TEXT="<code>-----------------------</code>
 <code>   SlowDNS Premium </code>
 <code>-----------------------</code>
 <code>IP Server    =</code> <code>$IP</code>
-<code>Host SlowDNS =</code> <code>$NS</code>
+<code>Host Utama   =</code> <code>$domen</code>
+<code>NS SlowDNS   =</code> <code>$NS</code>
 <code>Pub Key      =</code> <code>$PUB</code>
 <code>Username     =</code> <code>$Login</code>
 <code>Password     =</code> <code>$Pass</code>
@@ -99,7 +104,8 @@ echo -e " ◇━━━━━━━━━━━━━━━━━◇"
 echo -e " Your Premium VPN Details"
 echo -e " ◇━━━━━━━━━━━━━━━━━◇"
 echo -e " IP Server        = ${IP}"
-echo -e " Host Slowdns     = ${NS}"
+echo -e " Host Utama       = ${domen}"
+echo -e " NS SlowDNS       = ${NS}"
 echo -e " Pub Key          = ${PUB}"
 echo -e " Username         = ${Login}"
 echo -e " Password         = ${Pass}"
