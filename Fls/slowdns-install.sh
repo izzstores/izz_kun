@@ -10,7 +10,7 @@ KEY_FILE="$WORK_DIR/server.key"
 BINARY=""
 UDP_ADDR=""
 DOMAIN=""
-UPSTREAM=127.0.0.1:22
+UPSTREAM=127.0.0.1:10053
 EXTRA_ARGS=""
 DIRECT_IP=""
 INTERFACE=""
@@ -125,7 +125,7 @@ new_config() {
 		1) ask 'SlowDNS domain milik Anda' '' DOMAIN ;;
 		*) fail 'Gunakan domain sendiri yang sudah diarahkan ke IP VPS' ;;
 	esac
-	ask 'SSH/upstream destination' "$UPSTREAM" UPSTREAM
+	ask 'SSH & Xray upstream destination (Multiplexer)' "$UPSTREAM" UPSTREAM
 	case "$address" in auto) address="" ;; \[*\]) ;; *:*) address="[$address]" ;; esac
 	UDP_ADDR="$address:$port"
 }

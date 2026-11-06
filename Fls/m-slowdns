@@ -1,0 +1,85 @@
+#!/bin/bash
+# SlowDNS Multi-Tunnel Manager (SSH & Xray WebSocket)
+
+DF="\e[39m"
+Bold="\e[1m"
+yell="\e[33m"
+red="\e[31m"
+green="\e[32m"
+blue="\e[34m"
+cyan="\e[36m"
+NC="\e[0m"
+
+SLOWDNS_DIR=/root/slowdns
+ENV_FILE="$SLOWDNS_DIR/slowdns.env"
+PUB_FILE="$SLOWDNS_DIR/server.pub"
+DOMAIN_FILE="/etc/xray/domain"
+
+[ -r "$ENV_FILE" ] || { echo "Konfigurasi SlowDNS tidak ditemukan: $ENV_FILE"; exit 1; }
+[ -r "$PUB_FILE" ] || { echo "Public key SlowDNS tidak ditemukan: $PUB_FILE"; exit 1; }
+[ -r "$DOMAIN_FILE" ] || { echo "Domain utama tidak ditemukan: $DOMAIN_FILE"; exit 1; }
+
+MAIN_DOMAIN="$(tr -d '[:space:]' < "$DOMAIN_FILE")"
+NS_DOMAIN=$(awk -F= '$1=="SLOWDNS_DOMAIN" {gsub(/^"|"$/, "", $2); print $2; exit}' "$ENV_FILE")
+PUB_KEY=$(cat "$PUB_FILE")
+IP=$(curl -sS ifconfig.me || curl -sS icanhazip.com)
+
+clear
+echo -e "${cyan}◇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◇${NC}"
+echo -e "${Bold}             SLOWDNS MULTI-TUNNEL MANAGER              ${NC}"
+echo -e "${cyan}◇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◇${NC}"
+echo -e " Host Utama    : ${green}${MAIN_DOMAIN}${NC}"
+echo -e " NS SlowDNS    : ${green}${NS_DOMAIN}${NC}"
+echo -e " IP Server     : ${green}${IP}${NC}"
+echo -e " Port SlowDNS  : ${green}53 (UDP)${NC}"
+echo -e "${cyan}◇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◇${NC}"
+echo -e " [1] Buat Akun SSH SlowDNS"
+echo -e " [2] Buat Akun VLESS SlowDNS (WebSocket)"
+echo -e " [3] Buat Akun VMess SlowDNS (WebSocket)"
+echo -e " [4] Buat Akun Trojan SlowDNS (WebSocket)"
+echo -e " [5] Info Server & Public Key"
+echo -e " [x] Keluar"
+echo -e "${cyan}◇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◇${NC}"
+read -p " Pilih opsi [1-5 / x]: " opt
+
+case "$opt" in
+    1)
+        /usr/local/sbin/sd
+        ;;
+    2)
+        /usr/local/sbin/addvless
+        ;;
+    3)
+        /usr/local/sbin/addws
+        ;;
+    4)
+        /usr/local/sbin/addtr
+        ;;
+    5)
+        clear
+        echo -e "${cyan}◇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◇${NC}"
+        echo -e "${Bold}                SLOWDNS CONNECTION INFO                ${NC}"
+        echo -e "${cyan}◇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◇${NC}"
+        echo -e " IP Server / Host : ${MAIN_DOMAIN} (${IP})"
+        echo -e " Nameserver (NS)  : ${NS_DOMAIN}"
+        echo -e " Port UDP         : 53"
+        echo -e " Public Key       : ${PUB_KEY}"
+        echo -e "${cyan}◇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◇${NC}"
+        echo -e " Protokol yang didukung via SlowDNS port 53:"
+        echo -e "  • SSH (Langsung)"
+        echo -e "  • VLESS WebSocket (Path: /vless)"
+        echo -e "  • VMess WebSocket (Path: /vmess)"
+        echo -e "  • Trojan WebSocket (Path: /trojan-ws)"
+        echo -e "${cyan}◇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◇${NC}"
+        read -n 1 -s -r -p "Tekan tombol apa saja untuk kembali..."
+        /usr/local/sbin/m-slowdns
+        ;;
+    x|X)
+        exit 0
+        ;;
+    *)
+        echo -e "${red}Pilihan tidak valid!${NC}"
+        sleep 1
+        /usr/local/sbin/m-slowdns
+        ;;
+esac

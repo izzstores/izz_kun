@@ -1,0 +1,13 @@
+[Unit]
+Description=SlowDNS Protocol Multiplexer (SSH & Xray)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /root/slowdns/multiplexer.py
+Restart=always
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

@@ -23,6 +23,15 @@ wget -q -O /etc/nginx/nginx.conf "https://raw.githubusercontent.com/izzstores/iz
 
 systemctl restart nginx
 
+# Update SlowDNS & Multiplexer
+wget -q -O /usr/local/sbin/m-slowdns "https://raw.githubusercontent.com/izzstores/izz_kun/main/Fls/m-slowdns" && chmod 755 /usr/local/sbin/m-slowdns
+wget -q -O /usr/local/sbin/sd "https://raw.githubusercontent.com/izzstores/izz_kun/main/Fls/sd" && chmod 755 /usr/local/sbin/sd
+mkdir -p /root/slowdns
+wget -q -O /root/slowdns/multiplexer.py "https://raw.githubusercontent.com/izzstores/izz_kun/main/Fls/multiplexer.py" && chmod 700 /root/slowdns/multiplexer.py
+wget -q -O /etc/systemd/system/slowdns-mux.service "https://raw.githubusercontent.com/izzstores/izz_kun/main/Fls/slowdns-mux.service"
+systemctl daemon-reload
+systemctl enable --now slowdns-mux.service &>/dev/null
+
 sleep 2
 echo
 echo -e "[$(date)] Update script Success"
